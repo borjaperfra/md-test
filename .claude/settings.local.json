@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx create-next-app@14 . --typescript --tailwind --app --no-eslint --no-src-dir --import-alias \"@/*\" --yes)",
+      "Bash(npx create-next-app@14 . --typescript --tailwind --app --no-eslint --no-src-dir --import-alias \"@/*\" --yes --force)",
+      "Bash(npx create-next-app@14 manfred-daily-tmp --typescript --tailwind --app --no-eslint --no-src-dir --import-alias \"@/*\" --yes)",
+      "Bash(cp -r \"C:\\\\Users\\\\Borja Pérez Francés\\\\Desktop\\\\prueba_warp\\\\manfred-daily-tmp/.\" \"C:\\\\Users\\\\Borja Pérez Francés\\\\Desktop\\\\prueba_warp\\\\manfred-daily/\")",
+      "Bash(rm -rf \"C:\\\\Users\\\\Borja Pérez Francés\\\\Desktop\\\\prueba_warp\\\\manfred-daily-tmp\")",
+      "Bash(mkdir -p src)",
+      "Bash(mv app:*)",
+      "Bash(npm install:*)",
+      "Bash(npx prisma:*)",
+      "Bash(DATABASE_URL=\"postgresql://user:password@localhost:5432/manfred_daily\" npx prisma generate)",
+      "Bash(npx tsc:*)",
+      "Bash(npm run:*)",
+      "Bash(Test-NetConnection db.jabbtevrowuarjhwrfgf.supabase.co -Port 5432)",
+      "Bash(timeout 5 bash -c \"echo > /dev/tcp/db.jabbtevrowuarjhwrfgf.supabase.co/5432\")",
+      "Bash(nslookup:*)",
+      "Skill(claude-api)",
+      "Bash(cd:*)",
+      "Bash(node -e \":*)",
+      "Bash(\"C:\\\\Users\\\\Borja Pérez Francés\\\\Desktop\\\\prueba_warp\\\\manfred-daily\\\\.gitignore\")"
+    ]
+  }
+}

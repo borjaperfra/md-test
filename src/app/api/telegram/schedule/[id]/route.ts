@@ -1,0 +1,29 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
+import { prisma } from '@/lib/prisma';
+
+const patchSchema = z.object({
+  message: z.string().min(1).optional(),
+  scheduledAt: z.string().datetime().optional(),
+  status: z.enum(['pending', 'sent', 'failed', 'cancelled']).optional(),
+});
+
+export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+  const body = await request.json();
+  const parsed = patchSchema.safeParse(body);
+  if (!parsed.success) return NextResponse.json({ error: 'Invalid' }, { status: 400 });
+
+  const data: Record<string, unknown> = { ...parsed.data };
+  if (parsed.data.scheduledAt) data.scheduledAt = new Date(parsed.data.scheduledAt);
+
+  const updated = await prisma.scheduledMessage.update({
+    where: { id: params.id },
+    data,
+  });
+  return NextResponse.json(updated);
+}
+
+export async function DELETE(_: NextRequest, { params }: { params: { id: string } }) {
+  await prisma.scheduledMessage.delete({ where: { id: params.id } });
+  return NextResponse.json({ ok: true });
+}
