@@ -11,6 +11,7 @@ interface OfferStat {
   company: string;
   salary: string | null;
   shortUrl: string | null;
+  type: string | null;
   clicks: number;
 }
 
@@ -30,6 +31,7 @@ interface Summary {
   globalAvgClicks: number;
   globalAvgViews: number | null;
   messagesSent: number;
+  bestDay: { sentAt: string | null; totalClicks: number } | null;
 }
 
 interface AnalyticsData {
@@ -83,6 +85,12 @@ function formatSalary(salary: string | null): string {
   }
 
   return `€${s}`;
+}
+
+function TypeBadge({ type }: { type: string | null }) {
+  if (type === 'manfred') return <span title="Manfred">Ⓜ️</span>;
+  if (type === 'client') return <span title="Client">👀</span>;
+  return null;
 }
 
 // ─── KPI Card ─────────────────────────────────────────────────────────────────
@@ -147,6 +155,7 @@ export function AnalyticsClient() {
   const [error, setError] = useState<string | null>(null);
   const [selectedDates, setSelectedDates] = useState<Set<string>>(new Set());
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [topPeriod, setTopPeriod] = useState<'week' | 'month' | 'all'>('all');
 
   useEffect(() => {
     fetch('/api/analytics')
@@ -173,6 +182,18 @@ export function AnalyticsClient() {
   if (!data) return null;
 
   const { summary, sections } = data;
+
+  const now = Date.now();
+  const topPeriodMs = topPeriod === 'week' ? 7 * 86400_000 : topPeriod === 'month' ? 30 * 86400_000 : Infinity;
+  const filteredForTop = sections.filter((s) => s.sentAt && (now - new Date(s.sentAt).getTime()) <= topPeriodMs);
+  const topOffers = (() => {
+    const map = new Map<string, OfferStat>();
+    for (const o of filteredForTop.flatMap((s) => s.offers)) {
+      const prev = map.get(o.id);
+      if (!prev || o.clicks > prev.clicks) map.set(o.id, o);
+    }
+    return Array.from(map.values()).sort((a, b) => b.clicks - a.clicks).slice(0, 5);
+  })();
 
   const toggleSection = (messageId: string) =>
     setSelectedDates((prev) => {
@@ -238,7 +259,7 @@ export function AnalyticsClient() {
   return (
     <div className="flex h-full flex-col overflow-auto">
       {/* ── KPI cards ─────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-3 gap-4 p-6 pb-4">
+      <div className="grid grid-cols-4 gap-4 p-6 pb-4">
         <KpiCard
           icon={MousePointerClick}
           label="Clicks totales"
@@ -267,7 +288,58 @@ export function AnalyticsClient() {
           }
           highlight={hasSelection}
         />
+        <KpiCard
+          icon={TrendingUp}
+          label="Mejor mensaje"
+          value={summary.bestDay ? fmtNum(summary.bestDay.totalClicks) : '—'}
+          historicalLabel="fecha"
+          historicalValue={
+            summary.bestDay?.sentAt
+              ? new Date(summary.bestDay.sentAt).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', timeZone: 'Europe/Madrid' })
+              : '—'
+          }
+        />
       </div>
+
+      {/* ── Top ofertas ───────────────────────────────────────────────────── */}
+      {topOffers.length > 0 && (
+        <div className="mx-6 mb-4 rounded-xl border border-gray-100 bg-white shadow-sm">
+          <div className="flex items-center justify-between border-b border-gray-100 px-5 py-3">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-400">Top ofertas por clicks</h3>
+            <div className="flex gap-1">
+              {(['week', 'month', 'all'] as const).map((p) => (
+                <button
+                  key={p}
+                  onClick={() => setTopPeriod(p)}
+                  className={`rounded px-2 py-0.5 text-xs font-medium transition-colors ${
+                    topPeriod === p ? 'bg-indigo-100 text-indigo-700' : 'text-gray-400 hover:text-gray-600'
+                  }`}
+                >
+                  {p === 'week' ? 'Esta semana' : p === 'month' ? 'Este mes' : 'Histórico'}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="divide-y divide-gray-50">
+            {topOffers.length === 0 && (
+              <p className="px-5 py-4 text-xs text-gray-400">Sin datos para este período.</p>
+            )}
+            {topOffers.map((offer, i) => (
+              <div key={offer.id} className="flex items-center gap-3 px-5 py-2.5">
+                <span className="w-4 text-xs font-bold text-gray-300">#{i + 1}</span>
+                <div className="min-w-0 flex-1">
+                  <p className="flex items-center gap-1 truncate text-sm font-medium text-gray-700">
+                    <TypeBadge type={offer.type} />
+                    {offer.title}
+                  </p>
+                  <p className="text-xs text-gray-400">{offer.company} · {formatSalary(offer.salary)}</p>
+                </div>
+                <ClickBar clicks={offer.clicks} max={topOffers[0].clicks} />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {hasSelection && (
         <div className="flex items-center gap-2 px-6 pb-3">
@@ -381,7 +453,12 @@ export function AnalyticsClient() {
                             key={offer.id}
                             className={isSelected ? 'bg-indigo-50/30' : 'hover:bg-gray-50/60'}
                           >
-                            <td className="px-5 py-3 text-gray-700">{offer.title}</td>
+                            <td className="px-5 py-3 text-gray-700">
+                              <span className="flex items-center gap-1">
+                                <TypeBadge type={offer.type} />
+                                {offer.title}
+                              </span>
+                            </td>
                             <td className="px-5 py-3 text-gray-500">{offer.company}</td>
                             <td className="px-5 py-3 text-gray-500">{formatSalary(offer.salary)}</td>
                             <td className="px-5 py-3">

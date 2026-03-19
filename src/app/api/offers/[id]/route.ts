@@ -15,6 +15,7 @@ const patchSchema = z.object({
   notes: z.string().nullable().optional(),
   isFreelance: z.boolean().optional(),
   location: z.string().nullable().optional(),
+  publishedAt: z.string().datetime().nullable().optional(),
 });
 
 export async function PATCH(

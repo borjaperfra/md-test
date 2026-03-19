@@ -84,6 +84,7 @@ model ScheduledMessage {
   telegramId      String?
   views           Int?            // Snapshot of views saved before message deletion
   offersSnapshot  String?         // JSON: [{id,title,company,salary,shortUrl}] for imported/historical messages
+  createdBy   String?         // Email of the user who created/scheduled the message
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
 }

@@ -7,9 +7,12 @@ import { shortenUrl } from '@/lib/bitly';
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const status = searchParams.get('status') as OfferStatus | null;
+  const archived = searchParams.get('archived') === 'true';
 
   const offers = await prisma.offer.findMany({
-    where: status ? { status } : undefined,
+    where: archived
+      ? { publishedAt: { not: null } }
+      : { publishedAt: null, ...(status ? { status } : {}) },
     orderBy: { createdAt: 'desc' },
   });
 

@@ -11,6 +11,7 @@ interface SnapshotOffer {
   company: string;
   salary: string | null;
   shortUrl: string | null;
+  type?: string;
 }
 
 interface DbOffer {
@@ -19,6 +20,7 @@ interface DbOffer {
   company: string;
   salary: string | null;
   shortUrl: string | null;
+  type: string;
 }
 
 interface ClickableOffer {
@@ -95,7 +97,7 @@ export async function GET() {
   const dbOffers: DbOffer[] = allScheduledOfferIds.size > 0
     ? await prisma.offer.findMany({
         where: { id: { in: Array.from(allScheduledOfferIds) }, shortUrl: { not: null } },
-        select: { id: true, title: true, company: true, salary: true, shortUrl: true },
+        select: { id: true, title: true, company: true, salary: true, shortUrl: true, type: true },
       })
     : [];
 
@@ -131,13 +133,13 @@ export async function GET() {
 
     const snap = msgToSnapshot.get(msg.id);
     if (snap) {
-      msgOffers = snap.map((o: SnapshotOffer) => ({ ...o, clicks: clickMap.get(o.id) ?? 0 }));
+      msgOffers = snap.map((o: SnapshotOffer) => ({ ...o, type: o.type ?? null, clicks: clickMap.get(o.id) ?? 0 }));
     } else {
       const ids = msgToOfferIds.get(msg.id) ?? [];
       msgOffers = ids
         .map((id: string) => offerById.get(id))
         .filter((o): o is DbOffer => o !== undefined)
-        .map((o: DbOffer) => ({ id: o.id, title: o.title, company: o.company, salary: o.salary, shortUrl: o.shortUrl, clicks: clickMap.get(o.id) ?? 0 }));
+        .map((o: DbOffer) => ({ id: o.id, title: o.title, company: o.company, salary: o.salary, shortUrl: o.shortUrl, type: o.type, clicks: clickMap.get(o.id) ?? 0 }));
     }
 
     const totalClicks = msgOffers.reduce((s: number, o) => s + o.clicks, 0);
@@ -164,8 +166,25 @@ export async function GET() {
     ? Math.round(sectionsWithViews.reduce((s: number, d) => s + (d.views as number), 0) / sectionsWithViews.length)
     : null;
 
+  // Top 5 offers by clicks (deduplicated by id, taking max clicks across appearances)
+  const offerClicksMap = new Map<string, typeof allOfferStats[0]>();
+  for (const o of allOfferStats) {
+    const existing = offerClicksMap.get(o.id);
+    if (!existing || o.clicks > existing.clicks) offerClicksMap.set(o.id, o);
+  }
+  const topOffers = Array.from(offerClicksMap.values())
+    .sort((a, b) => b.clicks - a.clicks)
+    .slice(0, 5);
+
+  // Best day: section with most total clicks
+  const bestDay = sections.reduce<{ sentAt: string | null; totalClicks: number } | null>(
+    (best, s) => (!best || s.totalClicks > best.totalClicks ? { sentAt: s.sentAt ? String(s.sentAt) : null, totalClicks: s.totalClicks } : best),
+    null
+  );
+
   return NextResponse.json({
     sections,
-    summary: { totalClicks, totalOffers: allOfferStats.length, globalAvgClicks, globalAvgViews, messagesSent: messages.length },
+    summary: { totalClicks, totalOffers: allOfferStats.length, globalAvgClicks, globalAvgViews, messagesSent: messages.length, bestDay },
+    topOffers,
   });
 }

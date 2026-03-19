@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
 import { Toast } from '@/components/ui/Toast';
-import { Trash2, Pencil, Check, X, Clock, Send, Ban } from 'lucide-react';
+import { Trash2, Pencil, Check, X, Clock, Send, Ban, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface ScheduledMessage {
@@ -14,6 +14,7 @@ interface ScheduledMessage {
   sentAt: Date | null;
   status: string;
   telegramId: string | null;
+  createdBy: string | null;
   createdAt: Date;
 }
 
@@ -96,6 +97,7 @@ export function ScheduledClient({ messages: initial }: { messages: ScheduledMess
   };
 
   const cancel = async (id: string) => {
+    if (!confirm('¿Cancelar este mensaje programado? No se enviará a Telegram.')) return;
     const res = await fetch(`/api/telegram/schedule/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -153,6 +155,12 @@ export function ScheduledClient({ messages: initial }: { messages: ScheduledMess
                     })}
                   </span>
                 )}
+                {msg.createdBy && (
+                  <span className="flex items-center gap-1">
+                    <User className="h-3 w-3" />
+                    {msg.createdBy.split('@')[0]}
+                  </span>
+                )}
               </div>
 
               {/* Actions */}
@@ -168,10 +176,10 @@ export function ScheduledClient({ messages: initial }: { messages: ScheduledMess
                     </button>
                     <button
                       onClick={() => cancel(msg.id)}
-                      className="rounded p-1 text-gray-400 hover:bg-yellow-50 hover:text-yellow-600"
-                      title="Cancelar programación"
+                      className="flex items-center gap-1 rounded px-2 py-1 text-xs font-medium text-yellow-600 hover:bg-yellow-50"
                     >
                       <Ban className="h-3.5 w-3.5" />
+                      Cancelar envío
                     </button>
                   </>
                 )}

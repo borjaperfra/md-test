@@ -102,6 +102,7 @@ Mensajes enviados o programados para Telegram.
 | `status` | Enum | `pending` \| `sent` \| `failed` \| `cancelled` |
 | `telegramId` | String? | ID del mensaje en Telegram (para estadísticas) |
 | `views` | Int? | Snapshot de visualizaciones antes de la eliminación |
+| `createdBy` | String? | Email del usuario que creó/programó el mensaje |
 
 ---
 
@@ -111,10 +112,11 @@ Mensajes enviados o programados para Telegram.
 
 | Método | Ruta | Acción |
 |--------|------|--------|
-| GET | `/api/offers` | Lista todas las ofertas no publicadas |
+| GET | `/api/offers` | Lista ofertas activas (no publicadas) |
+| GET | `/api/offers?archived=true` | Lista ofertas archivadas (ya publicadas) |
 | POST | `/api/offers` | Crea una oferta manualmente |
-| DELETE | `/api/offers` | Borra todas las ofertas |
-| PATCH | `/api/offers/[id]` | Actualiza campos de una oferta |
+| DELETE | `/api/offers` | Borra todas las ofertas activas |
+| PATCH | `/api/offers/[id]` | Actualiza campos de una oferta (incluye `publishedAt` para restaurar) |
 | POST | `/api/offers/select` | Marca hasta 5 ofertas como seleccionadas |
 | POST | `/api/offers/fetch-url` | Extrae datos de una oferta desde su URL (Claude) |
 | POST | `/api/offers/search` | Búsqueda automática de ofertas (Claude + web_search) |
@@ -150,10 +152,18 @@ Mensajes enviados o programados para Telegram.
 
 Arranca una sola vez cuando el servidor Node.js se inicia. Usa `setInterval` alineado al inicio del minuto.
 
-- **Cada minuto:** llama a `/api/telegram/cron` → envía mensajes cuyo `scheduledAt ≤ now`.
+- **Cada minuto:** llama a `/api/telegram/cron` → envía mensajes cuyo `scheduledAt ≤ now`. Notifica a Slack en éxito o fallo.
 - **A las 23:00, 23:30 y 23:55 (hora Madrid):** llama a `/api/telegram/snapshot` → guarda las visualizaciones antes de que el mensaje se elimine del canal a las 23:59.
 
 > ⚠️ El cron solo funciona mientras el servidor esté corriendo. En Railway (servidor persistente) corre continuamente. No es compatible con Vercel (serverless).
+
+## Notificaciones Slack
+
+Se envían notificaciones automáticas al webhook configurado en `SLACK_WEBHOOK_URL`:
+
+- 📅 Cuando se programa un mensaje (día, hora y usuario)
+- ✅ Cuando el cron envía el mensaje correctamente
+- ⚠️ Cuando el cron falla al enviar
 
 ---
 
@@ -178,79 +188,18 @@ Arranca una sola vez cuando el servidor Node.js se inicia. Usa `setInterval` ali
 
 3. GENERAR MENSAJE
    /generator → Saludo (IA) + Ending (CSV) → "Generar Mensaje"
+   El borrador se guarda automáticamente en localStorage
 
 4. ENVIAR O PROGRAMAR
    "Enviar ahora" → publica inmediatamente en @getmanfred
    "Programar"    → se enviará a la hora elegida (hora Madrid)
+   → Las ofertas incluidas se archivan automáticamente
+   → Se envía notificación a Slack
 
 5. ANALÍTICA
    /analytics → clicks por oferta (Bit.ly) + visualizaciones Telegram
+   Top 5 ofertas filtrable por semana, mes e histórico
 ```
-
----
-
-## Variables de entorno
-
-```env
-# Base de datos
-DATABASE_URL=postgresql://...
-
-# URL de la app (para el cron interno)
-NEXT_PUBLIC_APP_URL=https://tu-app.up.railway.app
-
-# IA
-ANTHROPIC_API_KEY=sk-ant-...
-
-# Bit.ly
-BITLY_API_KEY=...
-
-# Telegram
-TELEGRAM_BOT_TOKEN=...
-TELEGRAM_CHAT_ID=@getmanfred
-
-# Auth
-NEXTAUTH_URL=https://tu-app.up.railway.app
-NEXTAUTH_SECRET=              # openssl rand -base64 32
-GOOGLE_CLIENT_ID=...
-GOOGLE_CLIENT_SECRET=...
-
-# Cron (cualquier string secreto)
-CRON_SECRET=                  # openssl rand -base64 32
-```
-
----
-
-## Correr en local
-
-```bash
-# 1. Clonar e instalar
-git clone https://github.com/borjaperfra/md-test.git
-cd md-test
-npm install
-
-# 2. Configurar entorno
-cp .env.example .env
-# Editar .env con los valores reales
-
-# 3. Generar cliente Prisma y sincronizar schema
-npm run db:generate
-npm run db:push
-
-# 4. Arrancar
-npm run dev
-# → http://localhost:3000
-```
-
----
-
-## Despliegue (Railway)
-
-1. Conectar repo de GitHub en Railway
-2. Añadir todas las variables de entorno en Railway → Variables
-3. Railway ejecuta `npm run build` (`prisma generate && next build`) y `npm start`
-4. El servidor escucha en el puerto que Railway asigna via `$PORT`
-
-**Google Cloud:** añadir `https://tu-app.up.railway.app/api/auth/callback/google` a los URIs de redirección autorizados del cliente OAuth.
 
 ---
 
