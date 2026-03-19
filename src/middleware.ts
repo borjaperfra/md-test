@@ -1,11 +1,22 @@
-import { withAuth } from 'next-auth/middleware';
+import { NextRequest, NextResponse } from 'next/server';
+import { getToken } from 'next-auth/jwt';
 
-export default withAuth({
-  pages: { signIn: '/login' },
-});
+export async function middleware(request: NextRequest) {
+  const token = await getToken({
+    req: request,
+    secret: process.env.NEXTAUTH_SECRET,
+  });
+
+  if (!token) {
+    const loginUrl = new URL('/login', request.url);
+    loginUrl.searchParams.set('callbackUrl', request.nextUrl.pathname);
+    return NextResponse.redirect(loginUrl);
+  }
+
+  return NextResponse.next();
+}
 
 export const config = {
-  // Protect everything except: login page, NextAuth routes, cron/snapshot (protected by CRON_SECRET), static assets
   matcher: [
     '/((?!login|api/auth|api/telegram/cron|api/telegram/snapshot|_next/static|_next/image|favicon\\.ico|.*\\.png$).*)',
   ],
