@@ -131,13 +131,17 @@ export async function GET() {
     if (!existingToday) {
       await prisma.channelSnapshot.create({ data: { subscribers } });
     }
-    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-    const weekAgoSnapshot = await prisma.channelSnapshot.findFirst({
-      where: { recordedAt: { lte: sevenDaysAgo } },
-      orderBy: { recordedAt: 'desc' },
+    // Find start of current week (Monday 00:00)
+    const now = new Date();
+    const monday = new Date(now);
+    monday.setHours(0, 0, 0, 0);
+    monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+    const oldestThisWeek = await prisma.channelSnapshot.findFirst({
+      where: { recordedAt: { gte: monday } },
+      orderBy: { recordedAt: 'asc' },
     });
-    if (weekAgoSnapshot) {
-      weeklyGrowth = subscribers - weekAgoSnapshot.subscribers;
+    if (oldestThisWeek) {
+      weeklyGrowth = subscribers - oldestThisWeek.subscribers;
     }
   }
 
