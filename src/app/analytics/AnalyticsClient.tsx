@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { ExternalLink, MousePointerClick, TrendingUp, Eye, Trash2 } from 'lucide-react';
+import { ExternalLink, MousePointerClick, TrendingUp, Eye, Trash2, Users, CalendarDays, X } from 'lucide-react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -32,6 +32,7 @@ interface Summary {
   globalAvgViews: number | null;
   messagesSent: number;
   bestDay: { sentAt: string | null; totalClicks: number } | null;
+  subscribers: number | null;
 }
 
 interface AnalyticsData {
@@ -156,6 +157,7 @@ export function AnalyticsClient() {
   const [selectedDates, setSelectedDates] = useState<Set<string>>(new Set());
   const [deleting, setDeleting] = useState<string | null>(null);
   const [topPeriod, setTopPeriod] = useState<'week' | 'month' | 'all'>('all');
+  const [dayFilter, setDayFilter] = useState<string>('');
 
   useEffect(() => {
     fetch('/api/analytics')
@@ -181,7 +183,10 @@ export function AnalyticsClient() {
   }
   if (!data) return null;
 
-  const { summary, sections } = data;
+  const { summary, sections: allSections } = data;
+  const sections = dayFilter
+    ? allSections.filter((s) => s.sentAt && new Date(s.sentAt).toLocaleDateString('sv', { timeZone: 'Europe/Madrid' }) === dayFilter)
+    : allSections;
 
   const now = Date.now();
   const topPeriodMs = topPeriod === 'week' ? 7 * 86400_000 : topPeriod === 'month' ? 30 * 86400_000 : Infinity;
@@ -289,13 +294,13 @@ export function AnalyticsClient() {
           highlight={hasSelection}
         />
         <KpiCard
-          icon={TrendingUp}
-          label="Mejor mensaje"
-          value={summary.bestDay ? fmtNum(summary.bestDay.totalClicks) : '—'}
-          historicalLabel="fecha"
+          icon={Users}
+          label="Suscriptores canal"
+          value={summary.subscribers !== null ? fmtNum(summary.subscribers) : '—'}
+          historicalLabel="mejor día"
           historicalValue={
-            summary.bestDay?.sentAt
-              ? new Date(summary.bestDay.sentAt).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', timeZone: 'Europe/Madrid' })
+            summary.bestDay
+              ? `${fmtNum(summary.bestDay.totalClicks)} clicks (${summary.bestDay.sentAt ? new Date(summary.bestDay.sentAt).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', timeZone: 'Europe/Madrid' }) : '—'})`
               : '—'
           }
         />
@@ -356,6 +361,22 @@ export function AnalyticsClient() {
           </button>
         </div>
       )}
+
+      {/* ── Day filter ────────────────────────────────────────────────────── */}
+      <div className="flex items-center gap-2 px-6 pb-3">
+        <CalendarDays className="h-4 w-4 text-gray-400" />
+        <input
+          type="date"
+          value={dayFilter}
+          onChange={(e) => { setDayFilter(e.target.value); setSelectedDates(new Set()); }}
+          className="rounded-md border border-gray-200 px-2 py-1 text-xs text-gray-600 focus:border-indigo-400 focus:outline-none"
+        />
+        {dayFilter && (
+          <button onClick={() => setDayFilter('')} className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600">
+            <X className="h-3.5 w-3.5" /> Mostrar todos
+          </button>
+        )}
+      </div>
 
       {/* ── Day sections ──────────────────────────────────────────────────── */}
       <div className="flex-1 overflow-auto px-6 pb-6">

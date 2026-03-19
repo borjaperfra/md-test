@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getClickCount } from '@/lib/bitly';
-import { getMessageViews } from '@/lib/telegram';
+import { getMessageViews, getChannelMemberCount } from '@/lib/telegram';
 
 export const dynamic = 'force-dynamic';
 
@@ -108,8 +108,8 @@ export async function GET() {
     ...snapshotOffers.filter((o: SnapshotOffer) => o.shortUrl),
   ];
 
-  // Fetch Bitly clicks + Telegram views in parallel
-  const [clickResults, viewResults] = await Promise.all([
+  // Fetch Bitly clicks + Telegram views + subscriber count in parallel
+  const [clickResults, viewResults, subscribers] = await Promise.all([
     Promise.allSettled(allOffersForClicks.map((o: ClickableOffer) => getClickCount(o.shortUrl!))),
     Promise.allSettled(
       messages.map((m) => {
@@ -117,6 +117,7 @@ export async function GET() {
         return m.telegramId ? getMessageViews(m.telegramId) : Promise.resolve(null);
       })
     ),
+    getChannelMemberCount(),
   ]);
 
   const clickMap = new Map<string, number>();
@@ -184,7 +185,7 @@ export async function GET() {
 
   return NextResponse.json({
     sections,
-    summary: { totalClicks, totalOffers: allOfferStats.length, globalAvgClicks, globalAvgViews, messagesSent: messages.length, bestDay },
+    summary: { totalClicks, totalOffers: allOfferStats.length, globalAvgClicks, globalAvgViews, messagesSent: messages.length, bestDay, subscribers },
     topOffers,
   });
 }

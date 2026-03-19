@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
+import { notifySlack } from '@/lib/slack';
 
 const patchSchema = z.object({
   message: z.string().min(1).optional(),
@@ -21,6 +22,14 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
       where: { id: params.id },
       data,
     });
+    if (parsed.data.status === 'cancelled' && updated.scheduledAt) {
+      const when = new Date(updated.scheduledAt).toLocaleString('es-ES', {
+        weekday: 'long', day: 'numeric', month: 'long',
+        hour: '2-digit', minute: '2-digit',
+        timeZone: 'Europe/Madrid',
+      });
+      await notifySlack(`🚫 Mensaje de Manfred Daily cancelado. Estaba programado para el ${when} (hora Madrid).`);
+    }
     return NextResponse.json(updated);
   } catch (err: unknown) {
     if ((err as { code?: string }).code === 'P2025') {

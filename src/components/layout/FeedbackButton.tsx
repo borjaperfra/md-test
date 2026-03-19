@@ -27,10 +27,10 @@ export function FeedbackButton() {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-gray-500 hover:bg-gray-800 hover:text-gray-300 transition-colors"
+        className="fixed bottom-5 right-5 z-40 flex items-center gap-2 rounded-full bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white shadow-lg hover:bg-indigo-700 transition-colors"
       >
-        <MessageSquarePlus className="h-3.5 w-3.5 shrink-0" />
-        Dar feedback
+        <MessageSquarePlus className="h-4 w-4" />
+        Feedback
       </button>
 
       {open && (

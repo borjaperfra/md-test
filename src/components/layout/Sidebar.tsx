@@ -1,10 +1,9 @@
 'use client';
 
-import { Briefcase, Send, CalendarClock, BarChart2 } from 'lucide-react';
+import { Briefcase, Send, CalendarClock, BarChart2, MessageSquarePlus } from 'lucide-react';
 import Image from 'next/image';
 import { NavItem } from './NavItem';
 import { UserMenu } from './UserMenu';
-import { FeedbackButton } from './FeedbackButton';
 
 interface SidebarProps {
   user?: {
@@ -35,7 +34,7 @@ export function Sidebar({ user }: SidebarProps) {
       </nav>
       {user && (
         <div className="border-t border-gray-800 pt-3 flex flex-col gap-1">
-          <FeedbackButton />
+          <NavItem href="/feedback" icon={MessageSquarePlus} label="Ver Feedback" />
           <UserMenu name={user.name} email={user.email} image={user.image} />
         </div>
       )}

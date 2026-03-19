@@ -99,6 +99,7 @@ enum MessageStatus {
 model Feedback {
   id        String   @id @default(cuid())
   text      String
-  author    String?  // Email del usuario
+  author    String?
+  reviewed  Boolean  @default(false)
   createdAt DateTime @default(now())
 }

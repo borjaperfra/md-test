@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { Sidebar } from '@/components/layout/Sidebar';
+import { FeedbackButton } from '@/components/layout/FeedbackButton';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 
@@ -21,6 +22,7 @@ export default async function RootLayout({
       <body className="flex h-screen bg-gray-50 text-gray-900 antialiased">
         {session && <Sidebar user={session.user} />}
         <main className="flex-1 overflow-auto">{children}</main>
+        {session && <FeedbackButton />}
       </body>
     </html>
   );

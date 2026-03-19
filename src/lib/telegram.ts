@@ -32,6 +32,20 @@ export async function getMessageViews(telegramMessageId: string): Promise<number
   }
 }
 
+export async function getChannelMemberCount(): Promise<number | null> {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  const chatId = process.env.TELEGRAM_CHAT_ID;
+  if (!token || !chatId) return null;
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${token}/getChatMemberCount?chat_id=${encodeURIComponent(chatId)}`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.ok ? (data.result as number) : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function sendTelegramMessage(text: string): Promise<string> {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   const chatId = process.env.TELEGRAM_CHAT_ID;
