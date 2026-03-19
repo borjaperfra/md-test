@@ -66,7 +66,7 @@ export async function GET() {
       urlToId.set(o.url, o.id);
       allScheduledOfferIds.add(o.id);
     }
-    for (const [msgId, urls] of msgToUrls.entries()) {
+    for (const [msgId, urls] of Array.from(msgToUrls.entries())) {
       const ids = urls.map((u) => urlToId.get(u)).filter(Boolean) as string[];
       msgToOfferIds.set(msgId, ids);
     }
