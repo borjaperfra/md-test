@@ -95,3 +95,10 @@ enum MessageStatus {
   failed
   cancelled
 }
+
+model Feedback {
+  id        String   @id @default(cuid())
+  text      String
+  author    String?  // Email del usuario
+  createdAt DateTime @default(now())
+}

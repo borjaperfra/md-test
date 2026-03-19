@@ -4,6 +4,7 @@ import { Briefcase, Send, CalendarClock, BarChart2 } from 'lucide-react';
 import Image from 'next/image';
 import { NavItem } from './NavItem';
 import { UserMenu } from './UserMenu';
+import { FeedbackButton } from './FeedbackButton';
 
 interface SidebarProps {
   user?: {
@@ -33,7 +34,8 @@ export function Sidebar({ user }: SidebarProps) {
         <NavItem href="/analytics" icon={BarChart2} label="Analítica" />
       </nav>
       {user && (
-        <div className="border-t border-gray-800 pt-3">
+        <div className="border-t border-gray-800 pt-3 flex flex-col gap-1">
+          <FeedbackButton />
           <UserMenu name={user.name} email={user.email} image={user.image} />
         </div>
       )}
