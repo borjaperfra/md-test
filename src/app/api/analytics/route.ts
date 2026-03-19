@@ -26,13 +26,23 @@ interface ClickableOffer {
   shortUrl: string | null;
 }
 
+interface ScheduledMessageRecord {
+  id: string;
+  sentAt: Date | null;
+  telegramId: string | null;
+  offerIds: string | null;
+  offersSnapshot: string | null;
+  message: string;
+  views: number | null;
+}
+
 function extractUrls(text: string): string[] {
   const matches = text.match(/https?:\/\/[^\s]+/g) ?? [];
   return matches.map((u: string) => u.replace(/[.,)]+$/, ''));
 }
 
 export async function GET() {
-  const messages = await prisma.scheduledMessage.findMany({
+  const messages: ScheduledMessageRecord[] = await prisma.scheduledMessage.findMany({
     where: { status: 'sent' },
     orderBy: { sentAt: 'desc' },
     select: { id: true, sentAt: true, telegramId: true, offerIds: true, offersSnapshot: true, message: true, views: true },
