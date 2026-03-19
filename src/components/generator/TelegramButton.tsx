@@ -12,6 +12,7 @@ interface TelegramButtonProps {
   message: string;
   date?: string; // YYYY-MM-DD
   offerIds?: string[];
+  onSent?: () => void;
 }
 
 function PreviewModal({
@@ -101,7 +102,7 @@ function buildScheduledAt(dateStr?: string): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T06:00`;
 }
 
-export function TelegramButton({ message, date, offerIds }: TelegramButtonProps) {
+export function TelegramButton({ message, date, offerIds, onSent }: TelegramButtonProps) {
   const [mode, setMode] = useState<Mode>('schedule');
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [scheduledAt, setScheduledAt] = useState(() => buildScheduledAt(date));
@@ -141,6 +142,7 @@ export function TelegramButton({ message, date, offerIds }: TelegramButtonProps)
 
       setShowPreview(false);
       setToast(mode === 'schedule' ? '✓ Mensaje programado con éxito' : '✓ Mensaje enviado');
+      onSent?.();
     } catch (err) {
       setToast(`Error: ${err instanceof Error ? err.message : 'desconocido'}`);
     } finally {

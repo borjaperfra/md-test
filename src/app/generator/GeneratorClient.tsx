@@ -26,6 +26,9 @@ export function GeneratorClient({ offers, todayEnding }: GeneratorClientProps) {
   const [message, setMessage] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [draftSaved, setDraftSaved] = useState(false);
+
+  const DRAFT_KEY = 'manfred-message-draft';
 
   const loadGreeting = async (date?: string) => {
     setGreetingLoading(true);
@@ -41,7 +44,25 @@ export function GeneratorClient({ offers, todayEnding }: GeneratorClientProps) {
     }
   };
 
-  useEffect(() => { loadGreeting(selectedDate); }, []);
+  useEffect(() => {
+    loadGreeting(selectedDate);
+    const draft = localStorage.getItem(DRAFT_KEY);
+    if (draft) {
+      setMessage(draft);
+      setToast('Borrador restaurado');
+    }
+  }, []);
+
+  // Auto-save message draft to localStorage
+  useEffect(() => {
+    if (!message) return;
+    localStorage.setItem(DRAFT_KEY, message);
+    setDraftSaved(true);
+    const t = setTimeout(() => setDraftSaved(false), 2000);
+    return () => clearTimeout(t);
+  }, [message]);
+
+  const clearDraft = () => localStorage.removeItem(DRAFT_KEY);
 
   const handleClearSelected = async () => {
     if (!confirm(`¿Deseleccionar las ${offers.length} ofertas?`)) return;
@@ -181,8 +202,20 @@ export function GeneratorClient({ offers, todayEnding }: GeneratorClientProps) {
 
       {message && (
         <>
-          <MessageEditor message={message} onChange={setMessage} onCopy={handleCopy} />
-          <TelegramButton message={message} date={selectedDate} offerIds={offers.map((o) => o.id)} />
+          <div className="relative">
+            <MessageEditor message={message} onChange={setMessage} onCopy={handleCopy} />
+            {draftSaved && (
+              <span className="absolute top-2 right-2 text-[10px] text-gray-400 animate-pulse">
+                Borrador guardado
+              </span>
+            )}
+          </div>
+          <TelegramButton
+            message={message}
+            date={selectedDate}
+            offerIds={offers.map((o) => o.id)}
+            onSent={clearDraft}
+          />
         </>
       )}
 
