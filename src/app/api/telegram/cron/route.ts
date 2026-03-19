@@ -1,10 +1,11 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { sendTelegramMessage } from '@/lib/telegram';
 
-// Call this endpoint every minute via cron (e.g. Windows Task Scheduler or curl)
-// curl -X POST http://localhost:3000/api/telegram/cron
-export async function POST() {
+export async function POST(request: NextRequest) {
+  if (request.headers.get('x-cron-secret') !== process.env.CRON_SECRET) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
   const due = await prisma.scheduledMessage.findMany({
     where: {
       status: 'pending',

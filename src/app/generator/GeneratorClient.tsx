@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Offer } from '@/lib/types';
 import { SelectedOffersList } from '@/components/generator/SelectedOffersList';
 import { MessageEditor } from '@/components/generator/MessageEditor';
@@ -8,7 +9,7 @@ import { TelegramButton } from '@/components/generator/TelegramButton';
 import { Button } from '@/components/ui/Button';
 import { Toast } from '@/components/ui/Toast';
 import { Spinner } from '@/components/ui/Spinner';
-import { Sparkles, RefreshCw } from 'lucide-react';
+import { Sparkles, RefreshCw, Trash2 } from 'lucide-react';
 
 interface GeneratorClientProps {
   offers: Offer[];
@@ -16,17 +17,21 @@ interface GeneratorClientProps {
 }
 
 export function GeneratorClient({ offers, todayEnding }: GeneratorClientProps) {
+  const router = useRouter();
   const [greeting, setGreeting] = useState('');
   const [greetingLoading, setGreetingLoading] = useState(true);
+  const [clearing, setClearing] = useState(false);
   const [ending, setEnding] = useState(todayEnding);
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().slice(0, 10));
   const [message, setMessage] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
-  const loadGreeting = async () => {
+  const loadGreeting = async (date?: string) => {
     setGreetingLoading(true);
     try {
-      const res = await fetch('/api/message/greeting');
+      const d = date ?? selectedDate;
+      const res = await fetch(`/api/message/greeting?date=${d}`);
       const data = await res.json();
       setGreeting(data.greeting ?? '');
     } catch {
@@ -36,7 +41,26 @@ export function GeneratorClient({ offers, todayEnding }: GeneratorClientProps) {
     }
   };
 
-  useEffect(() => { loadGreeting(); }, []);
+  useEffect(() => { loadGreeting(selectedDate); }, []);
+
+  const handleClearSelected = async () => {
+    if (!confirm(`¿Deseleccionar las ${offers.length} ofertas?`)) return;
+    setClearing(true);
+    try {
+      await Promise.all(
+        offers.map((o) =>
+          fetch(`/api/offers/${o.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: 'pending' }),
+          })
+        )
+      );
+      router.refresh();
+    } finally {
+      setClearing(false);
+    }
+  };
 
   const handleGenerate = async () => {
     setIsGenerating(true);
@@ -68,9 +92,21 @@ export function GeneratorClient({ offers, todayEnding }: GeneratorClientProps) {
   return (
     <div className="flex flex-col gap-5 p-6 max-w-2xl">
       <div>
-        <h2 className="mb-1 text-sm font-semibold text-gray-500 uppercase tracking-wide">
-          Ofertas seleccionadas
-        </h2>
+        <div className="mb-1 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
+            Ofertas seleccionadas
+          </h2>
+          {offers.length > 0 && (
+            <button
+              onClick={handleClearSelected}
+              disabled={clearing}
+              className="flex items-center gap-1 text-xs text-red-400 hover:text-red-600 disabled:opacity-40"
+            >
+              <Trash2 className="h-3 w-3" />
+              Limpiar selección
+            </button>
+          )}
+        </div>
         <SelectedOffersList offers={offers} />
       </div>
 
@@ -114,12 +150,17 @@ export function GeneratorClient({ offers, todayEnding }: GeneratorClientProps) {
           </label>
           <input
             type="date"
-            defaultValue={new Date().toISOString().slice(0, 10)}
+            value={selectedDate}
             onChange={async (e) => {
               if (!e.target.value) return;
-              const res = await fetch(`/api/message/ending?date=${e.target.value}`);
-              const data = await res.json();
-              setEnding(data.main ?? '');
+              const d = e.target.value;
+              setSelectedDate(d);
+              const [endRes] = await Promise.all([
+                fetch(`/api/message/ending?date=${d}`),
+                loadGreeting(d),
+              ]);
+              const endData = await endRes.json();
+              setEnding(endData.main ?? '');
             }}
             className="rounded border border-gray-200 px-2 py-0.5 text-xs text-gray-600 focus:border-indigo-400 focus:outline-none"
           />
@@ -141,7 +182,7 @@ export function GeneratorClient({ offers, todayEnding }: GeneratorClientProps) {
       {message && (
         <>
           <MessageEditor message={message} onChange={setMessage} onCopy={handleCopy} />
-          <TelegramButton message={message} />
+          <TelegramButton message={message} date={selectedDate} offerIds={offers.map((o) => o.id)} />
         </>
       )}
 

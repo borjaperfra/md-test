@@ -19,6 +19,7 @@ model Offer {
   order       Int?
   notes       String?
   isFreelance Boolean     @default(false)
+  location    String?
   publishedAt DateTime?
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
@@ -76,10 +77,13 @@ enum OfferStatus {
 model ScheduledMessage {
   id          String          @id @default(cuid())
   message     String
+  offerIds    String?         // JSON array of offer IDs included in this message
   scheduledAt DateTime?
   sentAt      DateTime?
   status      MessageStatus   @default(pending)
-  telegramId  String?
+  telegramId      String?
+  views           Int?            // Snapshot of views saved before message deletion
+  offersSnapshot  String?         // JSON: [{id,title,company,salary,shortUrl}] for imported/historical messages
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
 }

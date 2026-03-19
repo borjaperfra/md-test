@@ -51,11 +51,9 @@ export function SelectedOffersPanel() {
     setSaving(true);
     try {
       await persistSelection(selectedIds);
-      router.refresh(); // invalidate server component cache so /generator sees fresh data
-      setToast('Selección guardada');
+      router.push('/generator');
     } catch {
       setToast('Error al guardar la selección');
-    } finally {
       setSaving(false);
     }
   };

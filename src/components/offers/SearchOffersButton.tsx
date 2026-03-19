@@ -85,6 +85,12 @@ export function SearchOffersButton() {
               }
               totalFound += msg.count ?? 0;
               setFound(totalFound);
+              if (msg.error) console.error(`[search] ${msg.source}:`, msg.error);
+              if (msg.debug) console.warn(`[search] ${msg.source}:`, msg.debug);
+            } else if (msg.error) {
+              console.error(`[search] ${msg.source ?? 'unknown'}:`, msg.error);
+            } else if (msg.debug) {
+              console.warn(`[search] ${msg.source ?? 'unknown'}:`, msg.debug);
             } else if (msg.done) {
               totalFound = msg.total ?? totalFound;
               setFound(totalFound);

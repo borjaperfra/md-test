@@ -24,7 +24,13 @@ const createSchema = z.object({
   modality: z.enum(['remote', 'hybrid', 'onsite']),
   salary: z.string().nullable().optional(),
   isFreelance: z.boolean().optional().default(false),
+  location: z.string().nullable().optional(),
 });
+
+export async function DELETE() {
+  await prisma.offer.deleteMany();
+  return NextResponse.json({ ok: true });
+}
 
 export async function POST(request: NextRequest) {
   const body = await request.json();

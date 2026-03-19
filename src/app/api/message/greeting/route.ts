@@ -1,16 +1,18 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY ?? '' });
 
-export async function GET() {
-  const today = new Date().toLocaleDateString('es-ES', {
+export async function GET(request: NextRequest) {
+  const dateParam = new URL(request.url).searchParams.get('date');
+  const date = dateParam ? new Date(dateParam) : new Date();
+  const today = date.toLocaleDateString('es-ES', {
     weekday: 'long', day: 'numeric', month: 'long',
   });
 
   try {
-    const res = await client.messages.create({
-      model: 'claude-haiku-4-5',
+    const response = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
       max_tokens: 120,
       messages: [{
         role: 'user',
@@ -20,9 +22,7 @@ Vary the tone: curious, challenging, inspiring, surprising or witty.
 Return ONLY the greeting text, no quotes, no explanation.`,
       }],
     });
-
-    const block = res.content.find((b) => b.type === 'text');
-    const greeting = block?.type === 'text' ? block.text.trim() : '';
+    const greeting = response.content[0].type === 'text' ? response.content[0].text.trim() : '';
     return NextResponse.json({ greeting });
   } catch {
     return NextResponse.json({ greeting: '' });

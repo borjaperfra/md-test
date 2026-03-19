@@ -22,6 +22,8 @@ interface OfferPoolContextValue {
   persistSelection: (ids: string[]) => Promise<void>;
   addOffer: (offer: Offer) => void;
   addAndSelect: (offer: Offer) => void;
+  clearAllOffers: () => Promise<void>;
+  refreshPool: () => Promise<void>;
 }
 
 const OfferPoolContext = createContext<OfferPoolContextValue | null>(null);
@@ -98,6 +100,19 @@ export function OfferPoolProvider({
     setOffers((prev) => [offer, ...prev]);
   }, []);
 
+  const clearAllOffers = useCallback(async () => {
+    await fetch('/api/offers', { method: 'DELETE' });
+    setOffers([]);
+    setSelectedIds([]);
+  }, []);
+
+  const refreshPool = useCallback(async () => {
+    const res = await fetch('/api/offers');
+    if (!res.ok) return;
+    const fresh: Offer[] = await res.json();
+    setOffers(fresh);
+  }, []);
+
   const addAndSelect = useCallback((offer: Offer) => {
     setOffers((prev) => [offer, ...prev]);
     setSelectedIds((prev) => (prev.includes(offer.id) ? prev : [...prev, offer.id]));
@@ -135,6 +150,8 @@ export function OfferPoolProvider({
         persistSelection,
         addOffer,
         addAndSelect,
+        clearAllOffers,
+        refreshPool,
       }}
     >
       {children}

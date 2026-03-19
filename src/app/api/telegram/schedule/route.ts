@@ -5,6 +5,7 @@ import { sendTelegramMessage } from '@/lib/telegram';
 
 const schema = z.object({
   message: z.string().min(1),
+  offerIds: z.array(z.string()).optional(),
   scheduledAt: z.string().datetime().optional(), // ISO string; absent = send now
 });
 
@@ -22,14 +23,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
   }
 
-  const { message, scheduledAt } = parsed.data;
+  const { message, offerIds, scheduledAt } = parsed.data;
+  const offerIdsJson = offerIds && offerIds.length > 0 ? JSON.stringify(offerIds) : null;
 
   // Send now
   if (!scheduledAt) {
     try {
       const telegramId = await sendTelegramMessage(message);
       const record = await prisma.scheduledMessage.create({
-        data: { message, status: 'sent', sentAt: new Date(), telegramId },
+        data: { message, offerIds: offerIdsJson, status: 'sent', sentAt: new Date(), telegramId },
       });
       return NextResponse.json(record, { status: 201 });
     } catch (err) {
@@ -39,7 +41,7 @@ export async function POST(request: NextRequest) {
 
   // Schedule for later
   const record = await prisma.scheduledMessage.create({
-    data: { message, scheduledAt: new Date(scheduledAt), status: 'pending' },
+    data: { message, offerIds: offerIdsJson, scheduledAt: new Date(scheduledAt), status: 'pending' },
   });
   return NextResponse.json(record, { status: 201 });
 }

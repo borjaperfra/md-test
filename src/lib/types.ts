@@ -15,6 +15,7 @@ export interface Offer {
   order: number | null;
   notes: string | null;
   isFreelance: boolean;
+  location: string | null;
   publishedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
@@ -33,4 +34,5 @@ export interface OfferPatch {
   order?: number | null;
   notes?: string | null;
   isFreelance?: boolean;
+  location?: string | null;
 }

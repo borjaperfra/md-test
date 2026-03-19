@@ -10,6 +10,8 @@ type Mode = 'schedule' | 'now';
 
 interface TelegramButtonProps {
   message: string;
+  date?: string; // YYYY-MM-DD
+  offerIds?: string[];
 }
 
 function PreviewModal({
@@ -43,9 +45,10 @@ function PreviewModal({
           {mode === 'schedule' && scheduledAt && (
             <p className="mt-3 flex items-center gap-1.5 text-xs text-indigo-600">
               <Calendar className="h-3.5 w-3.5" />
-              Programado para {new Date(scheduledAt).toLocaleString('es-ES', {
+              Programado para {new Date(madridToUTC(scheduledAt)).toLocaleString('es-ES', {
                 weekday: 'long', day: 'numeric', month: 'long',
                 hour: '2-digit', minute: '2-digit',
+                timeZone: 'Europe/Madrid',
               })}
             </p>
           )}
@@ -65,17 +68,47 @@ function PreviewModal({
   );
 }
 
-export function TelegramButton({ message }: TelegramButtonProps) {
+const pad = (n: number) => String(n).padStart(2, '0');
+
+// Converts a datetime-local string (e.g. "2026-03-19T10:20") to UTC ISO,
+// treating the input as Europe/Madrid time regardless of the browser's timezone.
+function madridToUTC(datetimeLocal: string): string {
+  const [datePart, timePart] = datetimeLocal.split('T');
+  const [year, month, day] = datePart.split('-').map(Number);
+  const [hours, minutes] = timePart.split(':').map(Number);
+  // Start with the nominal time as UTC
+  const utcDate = new Date(Date.UTC(year, month - 1, day, hours, minutes));
+  // Find what local time Madrid would show for that UTC instant
+  const madridStr = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Madrid',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hour12: false,
+  }).format(utcDate);
+  const [, madridTime] = madridStr.split(', ');
+  const [mHours, mMinutes] = madridTime.split(':').map(Number);
+  // Shift UTC by the difference to make Madrid local == desired time
+  const offsetMs = ((hours * 60 + minutes) - (mHours * 60 + mMinutes)) * 60_000;
+  return new Date(utcDate.getTime() + offsetMs).toISOString();
+}
+
+function buildScheduledAt(dateStr?: string): string {
+  const d = dateStr ? new Date(`${dateStr}T06:00:00`) : (() => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(6, 0, 0, 0);
+    return tomorrow;
+  })();
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T06:00`;
+}
+
+export function TelegramButton({ message, date, offerIds }: TelegramButtonProps) {
   const [mode, setMode] = useState<Mode>('schedule');
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [scheduledAt, setScheduledAt] = useState(() => {
-    // Default to tomorrow at 6:00 local time
-    const d = new Date();
-    d.setDate(d.getDate() + 1);
-    d.setHours(6, 0, 0, 0);
-    const pad = (n: number) => String(n).padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-  });
+  const [scheduledAt, setScheduledAt] = useState(() => buildScheduledAt(date));
+
+  useEffect(() => {
+    setScheduledAt(buildScheduledAt(date));
+  }, [date]);
   const [showPreview, setShowPreview] = useState(false);
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -95,8 +128,8 @@ export function TelegramButton({ message }: TelegramButtonProps) {
     setLoading(true);
     try {
       const body = mode === 'schedule'
-        ? { message, scheduledAt: new Date(scheduledAt).toISOString() }
-        : { message };
+        ? { message, offerIds, scheduledAt: madridToUTC(scheduledAt) }
+        : { message, offerIds };
 
       const res = await fetch('/api/telegram/schedule', {
         method: 'POST',

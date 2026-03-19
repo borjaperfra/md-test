@@ -39,6 +39,32 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
+// Returns a datetime-local string (e.g. "2026-03-19T10:30") in Europe/Madrid time for a UTC date.
+function utcToMadridLocal(date: Date | string): string {
+  return new Intl.DateTimeFormat('sv', {
+    timeZone: 'Europe/Madrid',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit',
+  }).format(new Date(date)).replace(' ', 'T');
+}
+
+// Converts a datetime-local string treated as Europe/Madrid time to a UTC ISO string.
+function madridToUTC(datetimeLocal: string): string {
+  const [datePart, timePart] = datetimeLocal.split('T');
+  const [year, month, day] = datePart.split('-').map(Number);
+  const [hours, minutes] = timePart.split(':').map(Number);
+  const utcDate = new Date(Date.UTC(year, month - 1, day, hours, minutes));
+  const madridStr = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Madrid',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hour12: false,
+  }).format(utcDate);
+  const [, madridTime] = madridStr.split(', ');
+  const [mHours, mMinutes] = madridTime.split(':').map(Number);
+  const offsetMs = ((hours * 60 + minutes) - (mHours * 60 + mMinutes)) * 60_000;
+  return new Date(utcDate.getTime() + offsetMs).toISOString();
+}
+
 export function ScheduledClient({ messages: initial }: { messages: ScheduledMessage[] }) {
   const [messages, setMessages] = useState(initial);
   const [editing, setEditing] = useState<string | null>(null);
@@ -50,12 +76,12 @@ export function ScheduledClient({ messages: initial }: { messages: ScheduledMess
   const startEdit = (msg: ScheduledMessage) => {
     setEditing(msg.id);
     setEditText(msg.message);
-    setEditDate(msg.scheduledAt ? new Date(msg.scheduledAt).toISOString().slice(0, 16) : '');
+    setEditDate(msg.scheduledAt ? utcToMadridLocal(msg.scheduledAt) : '');
   };
 
   const saveEdit = async (id: string) => {
     const body: Record<string, string> = { message: editText };
-    if (editDate) body.scheduledAt = new Date(editDate).toISOString();
+    if (editDate) body.scheduledAt = madridToUTC(editDate);
 
     const res = await fetch(`/api/telegram/schedule/${id}`, {
       method: 'PATCH',
@@ -114,6 +140,7 @@ export function ScheduledClient({ messages: initial }: { messages: ScheduledMess
                     {new Date(msg.scheduledAt).toLocaleString('es-ES', {
                       weekday: 'short', day: 'numeric', month: 'short',
                       hour: '2-digit', minute: '2-digit',
+                      timeZone: 'Europe/Madrid',
                     })}
                   </span>
                 )}
@@ -122,6 +149,7 @@ export function ScheduledClient({ messages: initial }: { messages: ScheduledMess
                     <Send className="h-3 w-3" />
                     Enviado {new Date(msg.sentAt).toLocaleString('es-ES', {
                       day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
+                      timeZone: 'Europe/Madrid',
                     })}
                   </span>
                 )}

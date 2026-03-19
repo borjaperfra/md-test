@@ -16,14 +16,28 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
   const data: Record<string, unknown> = { ...parsed.data };
   if (parsed.data.scheduledAt) data.scheduledAt = new Date(parsed.data.scheduledAt);
 
-  const updated = await prisma.scheduledMessage.update({
-    where: { id: params.id },
-    data,
-  });
-  return NextResponse.json(updated);
+  try {
+    const updated = await prisma.scheduledMessage.update({
+      where: { id: params.id },
+      data,
+    });
+    return NextResponse.json(updated);
+  } catch (err: unknown) {
+    if ((err as { code?: string }).code === 'P2025') {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    }
+    throw err;
+  }
 }
 
 export async function DELETE(_: NextRequest, { params }: { params: { id: string } }) {
-  await prisma.scheduledMessage.delete({ where: { id: params.id } });
+  try {
+    await prisma.scheduledMessage.delete({ where: { id: params.id } });
+  } catch (err: unknown) {
+    if ((err as { code?: string }).code === 'P2025') {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    }
+    throw err;
+  }
   return NextResponse.json({ ok: true });
 }

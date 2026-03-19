@@ -10,10 +10,11 @@ interface OfferTableProps {
 
 export function OfferTable({ offers }: OfferTableProps) {
   const { selectedIds, selectAll, clearSelection } = useOfferPool();
-  const selectableIds = offers.filter((o) => o.status !== 'discarded').map((o) => o.id);
+  const visible = offers.filter((o) => o.status !== 'discarded');
+  const selectableIds = visible.map((o) => o.id);
   const allSelected = selectableIds.length > 0 && selectableIds.every((id) => selectedIds.includes(id));
 
-  if (offers.length === 0) {
+  if (visible.length === 0) {
     return (
       <div className="flex items-center justify-center py-20 text-gray-400">
         No offers yet. Add some offers to get started.
@@ -47,7 +48,7 @@ export function OfferTable({ offers }: OfferTableProps) {
           </tr>
         </thead>
         <tbody>
-          {offers.map((offer) => (
+          {visible.map((offer) => (
             <OfferRow key={offer.id} offer={offer} />
           ))}
         </tbody>

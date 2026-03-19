@@ -13,7 +13,7 @@ interface OfferRowProps {
   offer: Offer;
 }
 
-type EditableField = 'title' | 'company' | 'type' | 'modality' | 'salary' | 'url' | 'status';
+type EditableField = 'title' | 'company' | 'type' | 'modality' | 'salary' | 'url' | 'status' | 'location';
 
 const typeOptions = [
   { value: 'manfred', label: 'Manfred' },
@@ -117,8 +117,27 @@ export function OfferRow({ offer }: OfferRowProps) {
       <td className="px-3 py-2">
         {cell('type', offer.type, 'select', typeOptions)}
       </td>
-      <td className="px-3 py-2">
-        {cell('modality', offer.modality, 'select', modalityOptions)}
+      <td className="px-3 py-2 whitespace-nowrap">
+        <div className="flex items-center gap-1">
+          {cell('modality', offer.modality, 'select', modalityOptions)}
+          {offer.modality !== 'remote' && (
+            editingField === 'location' ? (
+              <InlineEditCell
+                value={offer.location ?? ''}
+                type="text"
+                onSave={(v) => handleSave('location', v)}
+                onCancel={() => setEditingField(null)}
+              />
+            ) : (
+              <span
+                className="cursor-pointer text-xs text-gray-400 hover:text-gray-600"
+                onClick={() => setEditingField('location')}
+              >
+                {offer.location ? `(${offer.location})` : '+ciudad'}
+              </span>
+            )
+          )}
+        </div>
       </td>
       <td className="px-3 py-2 whitespace-nowrap">
         {cell('salary', formatSalary(offer.salary))}

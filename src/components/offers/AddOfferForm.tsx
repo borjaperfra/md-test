@@ -28,6 +28,7 @@ interface ExtractedData {
   modality: Modality;
   salary: string | null;
   isFreelance: boolean;
+  location: string | null;
 }
 
 interface AddOfferFormProps {
@@ -217,6 +218,17 @@ export function AddOfferForm({ onClose }: AddOfferFormProps) {
                 onChange={(e) => patch('modality', e.target.value)}
               />
             </div>
+
+            {extracted.modality !== 'remote' && (
+              <div className="w-28">
+                <label className="mb-1 block text-xs font-medium text-gray-600">Ciudad</label>
+                <Input
+                  placeholder="Valencia"
+                  value={extracted.location ?? ''}
+                  onChange={(e) => patch('location', e.target.value || null as unknown as string)}
+                />
+              </div>
+            )}
 
             <div className="w-28">
               <label className="mb-1 block text-xs font-medium text-gray-600">Salario</label>

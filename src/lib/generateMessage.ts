@@ -13,13 +13,17 @@ function getPrefix(offer: Offer): string {
   return '';
 }
 
-function formatModality(modality: string): string {
+function formatModality(modality: string, location?: string | null): string {
   const map: Record<string, string> = {
     remote: 'Remote',
     hybrid: 'Hybrid',
     onsite: 'On-site',
   };
-  return map[modality] ?? modality;
+  const label = map[modality] ?? modality;
+  if (location && (modality === 'hybrid' || modality === 'onsite')) {
+    return `${label} (${location})`;
+  }
+  return label;
 }
 
 function formatOfferBlock(offer: Offer): string {
@@ -27,7 +31,7 @@ function formatOfferBlock(offer: Offer): string {
   const prefixStr = prefix ? `${prefix} ` : '';
   const salary = formatSalary(offer.salary);
   const url = offer.shortUrl ?? offer.url;
-  const modality = formatModality(offer.modality);
+  const modality = formatModality(offer.modality, offer.location);
 
   return `${prefixStr}${offer.title} @ ${offer.company}\n${modality} — ${salary}\n${url}`;
 }

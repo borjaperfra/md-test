@@ -10,16 +10,19 @@ export function formatSalary(salary: string | null | undefined): string {
 
   const s = salary.trim();
 
-  // Hourly rate: already contains /h
+  // Hourly rate — detect range first (€70-80/h), then single (€70/h)
   if (/\/h/i.test(s)) {
-    const match = s.match(/(\d+(?:[.,]\d+)?)/);
-    if (match) return `€${match[1]}/h`;
+    const rangeMatch = s.match(/(\d+(?:[.,]\d+)?)\s*[-–]\s*(\d+(?:[.,]\d+)?)/);
+    if (rangeMatch) return `€${rangeMatch[1]}-${rangeMatch[2]}/h`;
+    const singleMatch = s.match(/(\d+(?:[.,]\d+)?)/);
+    if (singleMatch) return `€${singleMatch[1]}/h`;
     return s;
   }
 
-  const upper = s.toUpperCase();
+  // Strip € signs for numeric matching, uppercase for K detection
+  const upper = s.replace(/€/g, '').toUpperCase().trim();
 
-  // Range: e.g. "60-80K", "60K-80K", "60.000-80.000"
+  // Range: "60-80K", "60K-80K", "107K-188K", "107-188K", "60.000-80.000"
   const rangeMatch = upper.match(/(\d[\d.,]*)\s*K?\s*[-–]\s*(\d[\d.,]*)\s*K?/);
   if (rangeMatch) {
     const a = normalizeK(rangeMatch[1], upper);
