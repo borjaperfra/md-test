@@ -117,7 +117,7 @@ export function GeneratorClient({ offers, todayEnding }: GeneratorClientProps) {
             Saludo del día
           </label>
           <button
-            onClick={loadGreeting}
+            onClick={() => loadGreeting()}
             disabled={greetingLoading}
             className="flex items-center gap-1 text-xs text-indigo-500 hover:text-indigo-700 disabled:opacity-40"
           >

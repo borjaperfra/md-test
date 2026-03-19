@@ -13,9 +13,22 @@ interface SnapshotOffer {
   shortUrl: string | null;
 }
 
+interface DbOffer {
+  id: string;
+  title: string;
+  company: string;
+  salary: string | null;
+  shortUrl: string | null;
+}
+
+interface ClickableOffer {
+  id: string;
+  shortUrl: string | null;
+}
+
 function extractUrls(text: string): string[] {
   const matches = text.match(/https?:\/\/[^\s]+/g) ?? [];
-  return matches.map((u) => u.replace(/[.,)]+$/, ''));
+  return matches.map((u: string) => u.replace(/[.,)]+$/, ''));
 }
 
 export async function GET() {
@@ -25,10 +38,6 @@ export async function GET() {
     select: { id: true, sentAt: true, telegramId: true, offerIds: true, offersSnapshot: true, message: true, views: true },
   });
 
-  // Separate messages by source:
-  // - offersSnapshot: inline data, no DB lookup needed
-  // - offerIds: reference to Offer table
-  // - legacy: extract URLs from message text
   const msgToOfferIds = new Map<string, string[]>();
   const msgToSnapshot = new Map<string, SnapshotOffer[]>();
   const msgToUrls = new Map<string, string[]>();
@@ -38,19 +47,19 @@ export async function GET() {
   for (const msg of messages) {
     if (msg.offersSnapshot) {
       try {
-        const snap: SnapshotOffer[] = JSON.parse(msg.offersSnapshot);
+        const snap = JSON.parse(msg.offersSnapshot) as SnapshotOffer[];
         msgToSnapshot.set(msg.id, snap);
       } catch { /* ignore */ }
     } else if (msg.offerIds) {
       try {
-        const ids: string[] = JSON.parse(msg.offerIds);
+        const ids = JSON.parse(msg.offerIds) as string[];
         msgToOfferIds.set(msg.id, ids);
-        ids.forEach((id) => allScheduledOfferIds.add(id));
+        ids.forEach((id: string) => allScheduledOfferIds.add(id));
       } catch { /* ignore */ }
     } else {
       const urls = extractUrls(msg.message);
       msgToUrls.set(msg.id, urls);
-      urls.forEach((u) => allLegacyUrls.push(u));
+      urls.forEach((u: string) => allLegacyUrls.push(u));
     }
   }
 
@@ -67,31 +76,31 @@ export async function GET() {
       allScheduledOfferIds.add(o.id);
     }
     for (const [msgId, urls] of Array.from(msgToUrls.entries())) {
-      const ids = urls.map((u) => urlToId.get(u)).filter(Boolean) as string[];
+      const ids = urls.map((u: string) => urlToId.get(u)).filter(Boolean) as string[];
       msgToOfferIds.set(msgId, ids);
     }
   }
 
   // Fetch offers from DB (only for offerIds / legacy messages)
-  const dbOffers = allScheduledOfferIds.size > 0
+  const dbOffers: DbOffer[] = allScheduledOfferIds.size > 0
     ? await prisma.offer.findMany({
         where: { id: { in: Array.from(allScheduledOfferIds) }, shortUrl: { not: null } },
         select: { id: true, title: true, company: true, salary: true, shortUrl: true },
       })
     : [];
 
-  // Collect all shortUrls that need click counts
-  const snapshotOffers = Array.from(msgToSnapshot.values()).flat();
-  const allOffersForClicks = [
+  // Collect all offers that need click counts
+  const snapshotOffers: SnapshotOffer[] = Array.from(msgToSnapshot.values()).flat();
+  const allOffersForClicks: ClickableOffer[] = [
     ...dbOffers,
-    ...snapshotOffers.filter((o) => o.shortUrl),
+    ...snapshotOffers.filter((o: SnapshotOffer) => o.shortUrl),
   ];
 
   // Fetch Bitly clicks + Telegram views in parallel
   const [clickResults, viewResults] = await Promise.all([
-    Promise.allSettled(allOffersForClicks.map((o) => getClickCount(o.shortUrl!))),
+    Promise.allSettled(allOffersForClicks.map((o: ClickableOffer) => getClickCount(o.shortUrl!))),
     Promise.allSettled(
-      messages.map((m: { telegramId: string | null; views: number | null }) => {
+      messages.map((m) => {
         if (m.views !== null && m.views !== undefined) return Promise.resolve(m.views);
         return m.telegramId ? getMessageViews(m.telegramId) : Promise.resolve(null);
       })
@@ -99,30 +108,31 @@ export async function GET() {
   ]);
 
   const clickMap = new Map<string, number>();
-  allOffersForClicks.forEach((o, i) => {
-    clickMap.set(o.id, clickResults[i].status === 'fulfilled' ? (clickResults[i].value as number) : 0);
+  allOffersForClicks.forEach((o: ClickableOffer, i: number) => {
+    const result = clickResults[i];
+    clickMap.set(o.id, result.status === 'fulfilled' ? (result.value as number) : 0);
   });
 
-  const offerById = new Map(dbOffers.map((o) => [o.id, o]));
+  const offerById = new Map<string, DbOffer>(dbOffers.map((o: DbOffer) => [o.id, o]));
 
   // Build one section per message
-  const sections = messages.map((msg, i) => {
+  const sections = messages.map((msg, i: number) => {
     let msgOffers: { id: string; title: string; company: string; salary: string | null; shortUrl: string | null; clicks: number }[];
 
     const snap = msgToSnapshot.get(msg.id);
     if (snap) {
-      // Inline snapshot: get clicks for each shortUrl
-      msgOffers = snap.map((o) => ({ ...o, clicks: clickMap.get(o.id) ?? 0 }));
+      msgOffers = snap.map((o: SnapshotOffer) => ({ ...o, clicks: clickMap.get(o.id) ?? 0 }));
     } else {
       const ids = msgToOfferIds.get(msg.id) ?? [];
       msgOffers = ids
-        .map((id) => offerById.get(id))
-        .filter(Boolean)
-        .map((o) => ({ id: o!.id, title: o!.title, company: o!.company, salary: o!.salary, shortUrl: o!.shortUrl, clicks: clickMap.get(o!.id) ?? 0 }));
+        .map((id: string) => offerById.get(id))
+        .filter((o): o is DbOffer => o !== undefined)
+        .map((o: DbOffer) => ({ id: o.id, title: o.title, company: o.company, salary: o.salary, shortUrl: o.shortUrl, clicks: clickMap.get(o.id) ?? 0 }));
     }
 
-    const totalClicks = msgOffers.reduce((s, o) => s + o.clicks, 0);
-    const views = viewResults[i].status === 'fulfilled' ? (viewResults[i].value as number | null) : null;
+    const totalClicks = msgOffers.reduce((s: number, o) => s + o.clicks, 0);
+    const viewResult = viewResults[i];
+    const views = viewResult.status === 'fulfilled' ? (viewResult.value as number | null) : null;
 
     return {
       messageId: msg.id,
@@ -136,12 +146,12 @@ export async function GET() {
   });
 
   const allOfferStats = sections.flatMap((s) => s.offers);
-  const totalClicks = allOfferStats.reduce((s, o) => s + o.clicks, 0);
+  const totalClicks = allOfferStats.reduce((s: number, o) => s + o.clicks, 0);
   const globalAvgClicks = allOfferStats.length > 0
     ? Math.round((totalClicks / allOfferStats.length) * 10) / 10 : 0;
   const sectionsWithViews = sections.filter((s) => s.views !== null);
   const globalAvgViews = sectionsWithViews.length > 0
-    ? Math.round(sectionsWithViews.reduce((s, d) => s + (d.views as number), 0) / sectionsWithViews.length)
+    ? Math.round(sectionsWithViews.reduce((s: number, d) => s + (d.views as number), 0) / sectionsWithViews.length)
     : null;
 
   return NextResponse.json({
