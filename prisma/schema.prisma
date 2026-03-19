@@ -96,6 +96,12 @@ enum MessageStatus {
   cancelled
 }
 
+model ChannelSnapshot {
+  id          String   @id @default(cuid())
+  subscribers Int
+  recordedAt  DateTime @default(now())
+}
+
 model Feedback {
   id        String   @id @default(cuid())
   text      String

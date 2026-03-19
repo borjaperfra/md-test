@@ -33,6 +33,7 @@ interface Summary {
   messagesSent: number;
   bestDay: { sentAt: string | null; totalClicks: number } | null;
   subscribers: number | null;
+  weeklyGrowth: number | null;
 }
 
 interface AnalyticsData {
@@ -297,11 +298,11 @@ export function AnalyticsClient() {
           icon={Users}
           label="Suscriptores canal"
           value={summary.subscribers !== null ? fmtNum(summary.subscribers) : '—'}
-          historicalLabel="mejor día"
+          historicalLabel="nuevos esta semana"
           historicalValue={
-            summary.bestDay
-              ? `${fmtNum(summary.bestDay.totalClicks)} clicks (${summary.bestDay.sentAt ? new Date(summary.bestDay.sentAt).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', timeZone: 'Europe/Madrid' }) : '—'})`
-              : '—'
+            summary.weeklyGrowth !== null
+              ? `${summary.weeklyGrowth >= 0 ? '+' : ''}${fmtNum(summary.weeklyGrowth)}`
+              : 'sin datos aún'
           }
         />
       </div>

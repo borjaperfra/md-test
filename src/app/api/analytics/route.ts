@@ -120,6 +120,27 @@ export async function GET() {
     getChannelMemberCount(),
   ]);
 
+  // Save today's subscriber snapshot (at most once per day) and get weekly delta
+  let weeklyGrowth: number | null = null;
+  if (subscribers !== null) {
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const existingToday = await prisma.channelSnapshot.findFirst({
+      where: { recordedAt: { gte: todayStart } },
+    });
+    if (!existingToday) {
+      await prisma.channelSnapshot.create({ data: { subscribers } });
+    }
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const weekAgoSnapshot = await prisma.channelSnapshot.findFirst({
+      where: { recordedAt: { lte: sevenDaysAgo } },
+      orderBy: { recordedAt: 'desc' },
+    });
+    if (weekAgoSnapshot) {
+      weeklyGrowth = subscribers - weekAgoSnapshot.subscribers;
+    }
+  }
+
   const clickMap = new Map<string, number>();
   allOffersForClicks.forEach((o: ClickableOffer, i: number) => {
     const result = clickResults[i];
@@ -185,7 +206,7 @@ export async function GET() {
 
   return NextResponse.json({
     sections,
-    summary: { totalClicks, totalOffers: allOfferStats.length, globalAvgClicks, globalAvgViews, messagesSent: messages.length, bestDay, subscribers },
+    summary: { totalClicks, totalOffers: allOfferStats.length, globalAvgClicks, globalAvgViews, messagesSent: messages.length, bestDay, subscribers, weeklyGrowth },
     topOffers,
   });
 }
