@@ -91,7 +91,7 @@ export async function GET() {
   const [clickResults, viewResults] = await Promise.all([
     Promise.allSettled(allOffersForClicks.map((o) => getClickCount(o.shortUrl!))),
     Promise.allSettled(
-      messages.map((m) => {
+      messages.map((m: { telegramId: string | null; views: number | null }) => {
         if (m.views !== null && m.views !== undefined) return Promise.resolve(m.views);
         return m.telegramId ? getMessageViews(m.telegramId) : Promise.resolve(null);
       })
