@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { sendTelegramMessage } from '@/lib/telegram';
+import { sendTelegramMessage, deleteTelegramMessage } from '@/lib/telegram';
 import { notifySlack } from '@/lib/slack';
 
 export async function POST(request: NextRequest) {
@@ -14,6 +14,12 @@ export async function POST(request: NextRequest) {
     },
   });
 
+  const prevSent = await prisma.scheduledMessage.findFirst({
+    where: { status: 'sent', telegramId: { not: null } },
+    orderBy: { sentAt: 'desc' },
+    select: { telegramId: true },
+  });
+
   const results = await Promise.allSettled(
     due.map(async (msg) => {
       try {
@@ -23,7 +29,12 @@ export async function POST(request: NextRequest) {
           data: { status: 'sent', sentAt: new Date(), telegramId },
         });
         const sentAt = new Date().toLocaleString('es-ES', { timeZone: 'Europe/Madrid', hour: '2-digit', minute: '2-digit' });
-        await notifySlack(`✅ Mensaje de Manfred Daily enviado a Telegram a las ${sentAt} (hora Madrid).`);
+        let slackText = `✅ Mensaje de Manfred Daily enviado a Telegram a las ${sentAt} (hora Madrid).`;
+        if (prevSent?.telegramId) {
+          const deleted = await deleteTelegramMessage(prevSent.telegramId);
+          if (deleted) slackText += ' El mensaje anterior ha sido borrado.';
+        }
+        await notifySlack(slackText);
         return { id: msg.id, sent: true };
       } catch (err) {
         await prisma.scheduledMessage.update({

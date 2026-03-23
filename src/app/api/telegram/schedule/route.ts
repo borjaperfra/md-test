@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
-import { sendTelegramMessage } from '@/lib/telegram';
+import { sendTelegramMessage, deleteTelegramMessage } from '@/lib/telegram';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { notifySlack } from '@/lib/slack';
@@ -42,11 +42,19 @@ export async function POST(request: NextRequest) {
   // Send now
   if (!scheduledAt) {
     try {
+      const prevSent = await prisma.scheduledMessage.findFirst({
+        where: { status: 'sent', telegramId: { not: null } },
+        orderBy: { sentAt: 'desc' },
+        select: { telegramId: true },
+      });
       const telegramId = await sendTelegramMessage(message);
       const record = await prisma.scheduledMessage.create({
         data: { message, offerIds: offerIdsJson, status: 'sent', sentAt: new Date(), telegramId, createdBy },
       });
       await publishOffers();
+      if (prevSent?.telegramId) {
+        await deleteTelegramMessage(prevSent.telegramId);
+      }
       return NextResponse.json(record, { status: 201 });
     } catch (err) {
       return NextResponse.json({ error: String(err) }, { status: 502 });
