@@ -5,6 +5,8 @@ import {
   useContext,
   useState,
   useCallback,
+  useEffect,
+  useRef,
   ReactNode,
 } from 'react';
 import { Offer, OfferPatch } from '@/lib/types';
@@ -42,6 +44,35 @@ export function OfferPoolProvider({
       .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
       .map((o) => o.id)
   );
+
+  // Auto-persist selection to DB on every change (debounced) so navigation doesn't lose it
+  const isFirstRender = useRef(true);
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    const t = setTimeout(() => {
+      fetch('/api/offers/select', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: selectedIds }),
+      })
+        .then((r) => r.json())
+        .then((updated: Offer[]) => {
+          setOffers((prev) =>
+            prev.map((o) => {
+              const u = updated.find((u) => u.id === o.id);
+              if (u) return u;
+              if (o.status === 'selected') return { ...o, status: 'pending', order: null };
+              return o;
+            })
+          );
+        })
+        .catch(() => {});
+    }, 600);
+    return () => clearTimeout(t);
+  }, [selectedIds]);
 
   const toggleSelect = useCallback(
     (id: string) => {

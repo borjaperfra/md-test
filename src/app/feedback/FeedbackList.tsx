@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Check, Trash2 } from 'lucide-react';
+import { Check, Trash2, Copy } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface FeedbackItem {
@@ -15,6 +15,13 @@ interface FeedbackItem {
 export function FeedbackList({ initialItems }: { initialItems: FeedbackItem[] }) {
   const [items, setItems] = useState(initialItems);
   const [filter, setFilter] = useState<'all' | 'pending' | 'reviewed'>('pending');
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const copy = (id: string, text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 1500);
+  };
 
   const toggleReviewed = async (id: string, reviewed: boolean) => {
     await fetch(`/api/feedback/${id}`, {
@@ -82,6 +89,15 @@ export function FeedbackList({ initialItems }: { initialItems: FeedbackItem[] })
                     })}</span>
                   </div>
                   <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => copy(item.id, item.text)}
+                      className="rounded p-1 text-gray-300 hover:text-indigo-400 transition-colors"
+                      title="Copiar texto"
+                    >
+                      {copiedId === item.id
+                        ? <Check className="h-3.5 w-3.5 text-green-500" />
+                        : <Copy className="h-3.5 w-3.5" />}
+                    </button>
                     <button
                       onClick={() => toggleReviewed(item.id, !item.reviewed)}
                       className={cn(
